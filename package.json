@@ -1,0 +1,16 @@
+{
+  "name": "phys",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "rollup": "rollup -f iife -w -o app.js src/app.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "rollup": "^0.34.13",
+    "rollup-watch": "^2.5.0"
+  }
+}
