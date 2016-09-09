@@ -5,12 +5,13 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "rollup": "rollup -f iife -w -o app.js src/app.js"
+    "rollup": "rollup -c -w"
   },
   "author": "",
   "license": "ISC",
   "devDependencies": {
     "rollup": "^0.34.13",
+    "rollup-plugin-includepaths": "^0.1.5",
     "rollup-watch": "^2.5.0"
   }
 }
