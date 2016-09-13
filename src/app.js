@@ -1,18 +1,42 @@
 import Renderer from "renderer.js";
+import Server from "server.js";
+import Client from "client.js";
 
-const SIZE = 10;
-
+let clients = {};
 let model = [
     {angle:0, color:"red", velocity:.02},
     {angle:Math.PI, color:"blue", velocity:-.02},
-]
+];
 
-let r = new Renderer(model);
-document.body.appendChild(r.getNode());
-r.start();
+const serverOptions = {
+    send(id, message) {
+        clients[id].onMessage(message);
+    }
+}
 
-setInterval(() => {
-    model.forEach(entity => {
-        entity.angle += .02;
-    })
-}, 1000/60);
+let server = new Server(model, serverOptions);
+server.start();
+
+let r1 = new Renderer(server);
+document.body.appendChild(r1.getNode());
+
+let ID = "1";
+let DELAY = 100;
+let clientOptions = {
+    connect() {
+        server.onConnect(ID)
+        return Promise.resolve();
+    },
+
+    send(message) {
+        setTimeout(() => {
+            server.onMessage(ID, message);
+        }, DELAY);
+    }
+}
+
+let c1 = new Client(clientOptions);
+clients[ID] = c1;
+
+//let r2 = new Renderer(c1);
+//document.body.appendChild(r2.getNode());
