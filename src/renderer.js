@@ -18,17 +18,19 @@ export default class Renderer {
 	}
 
 	_render() {
-		let model = this._component.getModel();
+		let model = this._component.getState();
+		if (!model) { return; }
 		let ctx = this._node.getContext("2d");
 		ctx.clearRect(0, 0, this._node.width, this._node.height);
 
-		model.forEach(entity => {
+		for (let id in model) {
+			let entity = model[id];
 			let x = Math.cos(entity.angle) * SIZE / 3;
 			let y = Math.sin(entity.angle) * SIZE / 3;
 			ctx.beginPath();
 			ctx.arc(SIZE/2 + x, SIZE/2 + y, 10, 0, 2*Math.PI, true);
 			ctx.strokeStyle = entity.color;
 			ctx.stroke();
-		});
+		};
 	}
 }

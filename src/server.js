@@ -1,57 +1,64 @@
 import log from "./log.js";
 
 const SIM = 60; // FPS
-const NOTIFY = 30; // FPS
+const NOTIFY = 4; // FPS
 
 export default class Server {
-    constructor(model, options) {
-        this._model = model;
-        this._options = options;
+    constructor(initialState) {
+        this._state = initialState;
         this._clients = [];
+    }
+
+    addClient(transport) {
+        transport.onMessage = (message) => this._onMessage(transport, message);
+        this._clients.push(transport)
     }
 
     onConnect(clientId) {
         this._clients.push(clientId);
     }
 
-    getModel() {
-        return this._model;
+    getState() {
+        return this._state;
     }
 
     start() {
         setInterval(() => this._tick(), 1000/SIM);
-//        setInterval(() => this._notify(), 1000/NOTIFY);
+        setInterval(() => this._notify(), 1000/NOTIFY);
     }
 
-    onMessage(clientId, {type, data, t}) {
+    _onMessage(clientTransport, {type, data, t}) {
         log("[server] received message %s", type);
         switch (type) {
             case "hai":
-                this._send(clientId, {type:"xxx"});
+                this._send(clientTransport, {type:"xxx"});
             break;
 
             case "lol":
-                this._send(clientId, {type:"wut"});
+                this._send(clientTransport, {type:"wut"});
             break;
         }
     }
 
     _tick() {
-        this._model.forEach(entity => {
-            entity.angle += .02;
-        })
+        for (let id in this._state) {
+            let entity = this._state[id];
+            entity.angle += entity.velocity;
+
+        }
     }
 
-    _send(clientId, message) {
+    _send(clientTransport, message) {
         message.t = Date.now();
-        this._options.send(clientId, message);
+        clientTransport.send(message);
     }
 
     _notify() {
+        let state = JSON.parse(JSON.stringify(this._state));
         let message = {
             type: "fyi",
-            data: this._model
+            data: state
         }
-        this._clients.forEach(id => this._send(id, message));
+        this._clients.forEach(t => this._send(t, message));
     }
 }

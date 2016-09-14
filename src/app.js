@@ -1,42 +1,32 @@
 import Renderer from "renderer.js";
 import Server from "server.js";
 import Client from "client.js";
+import {ProxyTransport} from "transport.js";
 
-let clients = {};
-let model = [
-    {angle:0, color:"red", velocity:.02},
-    {angle:Math.PI, color:"blue", velocity:-.02},
-];
+let model = {
+    "a": {angle:0, color:"red", velocity:.02},
+    "b": {angle:Math.PI, color:"blue", velocity:-.02}
+};
 
-const serverOptions = {
-    send(id, message) {
-        clients[id].onMessage(message);
-    }
-}
-
-let server = new Server(model, serverOptions);
+let server = new Server(model);
 server.start();
 
 let r1 = new Renderer(server);
 document.body.appendChild(r1.getNode());
 
-let ID = "1";
-let DELAY = 100;
-let clientOptions = {
-    connect() {
-        server.onConnect(ID)
-        return Promise.resolve();
-    },
+function createClient() {
+    let serverTransport = new ProxyTransport();
+    server.addClient(serverTransport);
 
-    send(message) {
-        setTimeout(() => {
-            server.onMessage(ID, message);
-        }, DELAY);
-    }
+    let clientTransport = new ProxyTransport();
+    let client = new Client(clientTransport);
+
+    serverTransport.setOther(clientTransport);
+    clientTransport.setOther(serverTransport);
+
+    let r = new Renderer(client);
+    document.body.appendChild(r.getNode());
+
 }
 
-let c1 = new Client(clientOptions);
-clients[ID] = c1;
-
-//let r2 = new Renderer(c1);
-//document.body.appendChild(r2.getNode());
+createClient();
