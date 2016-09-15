@@ -42,69 +42,6 @@ function log(...args) {
     return console.log.apply(console, args);
 }
 
-const SIM = 60; // FPS
-const NOTIFY = 4; // FPS
-
-class Server {
-    constructor(initialState) {
-        this._state = initialState;
-        this._clients = [];
-    }
-
-    addClient(transport) {
-        transport.onMessage = (message) => this._onMessage(transport, message);
-        this._clients.push(transport)
-    }
-
-    onConnect(clientId) {
-        this._clients.push(clientId);
-    }
-
-    getState() {
-        return this._state;
-    }
-
-    start() {
-        setInterval(() => this._tick(), 1000/SIM);
-        setInterval(() => this._notify(), 1000/NOTIFY);
-    }
-
-    _onMessage(clientTransport, {type, data, t}) {
-        log("[server] received message %s", type);
-        switch (type) {
-            case "hai":
-                this._send(clientTransport, {type:"xxx"});
-            break;
-
-            case "lol":
-                this._send(clientTransport, {type:"wut"});
-            break;
-        }
-    }
-
-    _tick() {
-        for (let id in this._state) {
-            let entity = this._state[id];
-            entity.angle += entity.velocity;
-
-        }
-    }
-
-    _send(clientTransport, message) {
-        message.t = Date.now();
-        clientTransport.send(message);
-    }
-
-    _notify() {
-        let state = JSON.parse(JSON.stringify(this._state));
-        let message = {
-            type: "fyi",
-            data: state
-        }
-        this._clients.forEach(t => this._send(t, message));
-    }
-}
-
 function lerp(value1, value2, frac) {
     return value1 + frac * (value2 - value1);
 }
@@ -138,12 +75,38 @@ function lerpState(state1, state2, frac) {
 }
 
 class StateQueue {
-    constructor() {
+    /**
+     * @param {number} backlog Maximum age (in ms)
+     */
+    constructor(backlog = 1000) {
+        this._backlog = backlog;
         this._data = [];
     }
 
-    push(time, state) {
+    getSize() {
+        return this._data.length;
+    }
+
+    add(time, state) {
+        /* IMPROVE: guarantee monotonic time by checking for proper insert index? */
         this._data.push({time, state});
+
+        /* remove old records */
+        while (time-this._data[0].time > this._backlog) { this._data.shift(); }
+    }
+
+    getNewestState() {
+        let len = this._data.length;
+        if (len == 0) { return null; }
+
+        return this._data[len-1].state;
+    }
+
+    getNewestTime() {
+        let len = this._data.length;
+        if (len == 0) { return null; }
+
+        return this._data[len-1].time;
     }
 
     getStateAt(time) {
@@ -174,22 +137,120 @@ class StateQueue {
     }
 }
 
+const SIM = 60; // FPS
+const NOTIFY = 10; // FPS
+
+class Server {
+    constructor(initialState) {
+        this._startTime = this._now();
+        this._clients = [];
+
+        this._states = new StateQueue(1000);
+        this._states.add(this._now(), initialState);
+    }
+
+    addClient(transport) {
+        transport.onMessage = (message) => this._onMessage(transport, message);
+        this._clients.push(transport)
+    }
+
+    getState() {
+        return this._states.getNewestState();
+    }
+
+    start() {
+        setInterval(() => this._tick(), 1000/SIM);
+        setInterval(() => this._notify(), 1000/NOTIFY);
+        setInterval(() => this._dumpStats(), 2000);
+    }
+
+    _onMessage(clientTransport, {type, data, t}) {
+        this._log("received message %s", type);
+        switch (type) {
+            case "hai":
+                this._send(clientTransport, {type:"xxx"});
+            break;
+
+            case "lol":
+                this._send(clientTransport, {type:"wut"});
+            break;
+        }
+    }
+
+    _tick() {
+        let state = this._states.getNewestState();
+        let time = this._states.getNewestTime();
+        let now = this._now();
+
+        let newState = this._createNewState(state, now - time);
+        this._states.add(now, newState);
+    }
+
+    _createNewState(state, dt) {
+        let newState = {};
+        for (let id in state) {
+            let entity = state[id];
+            let newEntity = Object.assign({}, entity);
+            newEntity.angle += newEntity.velocity;
+            newState[id] = newEntity;
+        }
+        return newState;
+    }
+
+    _send(clientTransport, message) {
+        if (!message.t) { message.t = this._now(); }
+        clientTransport.send(message);
+    }
+
+    _now() {
+        return Date.now() - (this._startTime || 0);
+    }
+
+    _notify() {
+        let state = this._states.getNewestState();
+        let time = this._states.getNewestTime();
+
+        let message = {
+            type: "fyi",
+            data: state,
+            t: time
+        }
+        this._clients.forEach(t => this._send(t, message));
+    }
+
+    _dumpStats() {
+        this._log("stats: queue size: %s", this._states.getSize());
+    }
+
+    _log(msg, ...args) {
+        return log(`[server] ${msg}`, ...args);
+    }
+}
+
+const DEFAULT_OPTIONS = {
+    delay: 300
+}
+
 class Client {
-    constructor(transport) {
+    constructor(transport, options) {
         this._transport = transport;
         this._transport.onOpen = () => this._onOpen();
         this._transport.onMessage = (message) => this._onMessage(message);
 
-        this._serverTimeOffset = null;
+        this._options = Object.assign({}, DEFAULT_OPTIONS, options);
 
-        this._states = new StateQueue();
+        this._serverTimeOffset = null;
+        this._states = new StateQueue(2*this._options.delay);
+
+        setInterval(() => this._dumpStats(), 2000);
     }
 
     _onMessage({type, data, t}) {
-        if (type != "fyi") log("[client] received message %s", type);
+        if (type != "fyi") { this._log("received message %s", type); }
+
         switch (type) {
             case "fyi":
-                this._states.push(t, data);
+                this._states.add(t, data);
             break;
 
             case "wut":
@@ -197,15 +258,18 @@ class Client {
                 let latency = now - this._pingTime;
 
                 this._serverTimeOffset = (t - now) + latency/2;
-                log("[client] latency %s", latency);
-                log("[client] server time offset %s", this._serverTimeOffset);
+                this._log("latency %s", latency);
+                this._log("server time offset %s", this._serverTimeOffset);
             break;
         }
     }
 
     getState() {
-        let time = Date.now() + this._serverTimeOffset - 1000;
-        return this._states.getStateAt(time);
+        return this._states.getStateAt(this._now());
+    }
+
+    _now() {
+        return Date.now() + this._serverTimeOffset - this._options.delay;
     }
 
     _send(message) {
@@ -216,6 +280,15 @@ class Client {
         this._pingTime = Date.now();
         this._send({type:"lol"});
     }
+
+    _dumpStats() {
+        this._log("stats: queue size: %s", this._states.getSize());
+    }
+
+    _log(msg, ...args) {
+        return log(`[client] ${msg}`, ...args);
+    }
+
 }
 
 class Transport {

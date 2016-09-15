@@ -31,12 +31,38 @@ function lerpState(state1, state2, frac) {
 }
 
 export default class StateQueue {
-    constructor() {
+    /**
+     * @param {number} backlog Maximum age (in ms)
+     */
+    constructor(backlog = 1000) {
+        this._backlog = backlog;
         this._data = [];
     }
 
-    push(time, state) {
+    getSize() {
+        return this._data.length;
+    }
+
+    add(time, state) {
+        /* IMPROVE: guarantee monotonic time by checking for proper insert index? */
         this._data.push({time, state});
+
+        /* remove old records */
+        while (time-this._data[0].time > this._backlog) { this._data.shift(); }
+    }
+
+    getNewestState() {
+        let len = this._data.length;
+        if (len == 0) { return null; }
+
+        return this._data[len-1].state;
+    }
+
+    getNewestTime() {
+        let len = this._data.length;
+        if (len == 0) { return null; }
+
+        return this._data[len-1].time;
     }
 
     getStateAt(time) {

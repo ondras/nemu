@@ -1,12 +1,16 @@
 import log from "./log.js";
+import StateQueue from "./statequeue.js";
 
 const SIM = 60; // FPS
-const NOTIFY = 4; // FPS
+const NOTIFY = 10; // FPS
 
 export default class Server {
     constructor(initialState) {
-        this._state = initialState;
+        this._startTime = this._now();
         this._clients = [];
+
+        this._states = new StateQueue(1000);
+        this._states.add(this._now(), initialState);
     }
 
     addClient(transport) {
@@ -14,21 +18,18 @@ export default class Server {
         this._clients.push(transport)
     }
 
-    onConnect(clientId) {
-        this._clients.push(clientId);
-    }
-
     getState() {
-        return this._state;
+        return this._states.getNewestState();
     }
 
     start() {
         setInterval(() => this._tick(), 1000/SIM);
         setInterval(() => this._notify(), 1000/NOTIFY);
+        setInterval(() => this._dumpStats(), 2000);
     }
 
     _onMessage(clientTransport, {type, data, t}) {
-        log("[server] received message %s", type);
+        this._log("received message %s", type);
         switch (type) {
             case "hai":
                 this._send(clientTransport, {type:"xxx"});
@@ -41,24 +42,51 @@ export default class Server {
     }
 
     _tick() {
-        for (let id in this._state) {
-            let entity = this._state[id];
-            entity.angle += entity.velocity;
+        let state = this._states.getNewestState();
+        let time = this._states.getNewestTime();
+        let now = this._now();
 
+        let newState = this._createNewState(state, now - time);
+        this._states.add(now, newState);
+    }
+
+    _createNewState(state, dt) {
+        let newState = {};
+        for (let id in state) {
+            let entity = state[id];
+            let newEntity = Object.assign({}, entity);
+            newEntity.angle += newEntity.velocity;
+            newState[id] = newEntity;
         }
+        return newState;
     }
 
     _send(clientTransport, message) {
-        message.t = Date.now();
+        if (!message.t) { message.t = this._now(); }
         clientTransport.send(message);
     }
 
+    _now() {
+        return Date.now() - (this._startTime || 0);
+    }
+
     _notify() {
-        let state = JSON.parse(JSON.stringify(this._state));
+        let state = this._states.getNewestState();
+        let time = this._states.getNewestTime();
+
         let message = {
             type: "fyi",
-            data: state
+            data: state,
+            t: time
         }
         this._clients.forEach(t => this._send(t, message));
+    }
+
+    _dumpStats() {
+        this._log("stats: queue size: %s", this._states.getSize());
+    }
+
+    _log(msg, ...args) {
+        return log(`[server] ${msg}`, ...args);
     }
 }
