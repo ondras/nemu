@@ -10,7 +10,7 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "rollup": "^0.35.11",
+    "rollup": "^0.36.0",
     "rollup-plugin-includepaths": "^0.1.5",
     "rollup-watch": "^2.5.0"
   }

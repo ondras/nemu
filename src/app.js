@@ -1,11 +1,11 @@
-import Renderer from "renderer.js";
-import Server from "server.js";
-import Client from "client.js";
-import {ProxyTransport} from "transport.js";
+import Renderer from "./renderer.js";
+import Server from "phys/server.js";
+import DemoClient from "./democlient.js";
 
+/* velocity in rads/s */
 let model = {
-    "a": {angle:0, color:"red", velocity:.02},
-    "b": {angle:Math.PI, color:"blue", velocity:-.02}
+    "a": {angle:0, color:"red", velocity:1},
+    "b": {angle:Math.PI, color:"blue", velocity:-1}
 };
 
 let server = new Server(model);
@@ -14,19 +14,9 @@ server.start();
 let r1 = new Renderer(server);
 document.body.appendChild(r1.getNode());
 
-function createClient() {
-    let serverTransport = new ProxyTransport();
-    server.addClient(serverTransport);
-
-    let clientTransport = new ProxyTransport();
-    let client = new Client(clientTransport);
-
-    serverTransport.setOther(clientTransport);
-    clientTransport.setOther(serverTransport);
-
-    let r = new Renderer(client);
-    document.body.appendChild(r.getNode());
-
-}
-
-createClient();
+let c1 = new DemoClient(server);
+document.body.appendChild(c1.getNode());
+/*
+let c2 = new DemoClient(server);
+document.body.appendChild(c2.getNode());
+*/

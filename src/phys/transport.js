@@ -31,18 +31,33 @@ export class ProxyTransport extends Transport {
     constructor() {
         super();
         this._other = null;
+        this._latency = 0;
+    }
+
+    setLatency(latency) {
+        this._latency = latency;
+        return this;
     }
 
     setOther(other) {
         this._other = other;
         this.onOpen();
+        return this;
     }
 
     send(message) {
-//        setTimeout(() => {
+        if (this._latency) {
+            setTimeout(() => {
+                this._other.onMessage(message);
+            }, this._latency);
+        } else {
             this._other.onMessage(message);
-//        }, 100);
+        }
+        return this;
     }
 
-    close() { this._other.onClose(); }
+    close() { 
+        this._other.onClose();
+        return this;
+    }
 }

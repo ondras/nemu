@@ -2,7 +2,7 @@ import log from "./log.js";
 import StateQueue from "./statequeue.js";
 
 const SIM = 60; // FPS
-const NOTIFY = 10; // FPS
+const NOTIFY = 8; // FPS
 
 export default class Server {
     constructor(initialState) {
@@ -46,7 +46,7 @@ export default class Server {
         let time = this._states.getNewestTime();
         let now = this._now();
 
-        let newState = this._createNewState(state, now - time);
+        let newState = this._createNewState(state, (now-time)/1000);
         this._states.add(now, newState);
     }
 
@@ -55,7 +55,7 @@ export default class Server {
         for (let id in state) {
             let entity = state[id];
             let newEntity = Object.assign({}, entity);
-            newEntity.angle += newEntity.velocity;
+            newEntity.angle += dt * newEntity.velocity;
             newState[id] = newEntity;
         }
         return newState;

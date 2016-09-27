@@ -5,6 +5,10 @@ function lerp(value1, value2, frac) {
 function lerpEntity(id, state1, state2, frac) {
     let entity1 = state1[id];
     let entity2 = state2[id];
+
+    if (!entity1) { return entity2; } // new entity arrived to state2
+    if (!entity2) { return entity1; } // old entity removed from state1
+
     let entity = {};
 
     for (let key in entity1) {
@@ -22,12 +26,18 @@ function lerpEntity(id, state1, state2, frac) {
     return entity;
 }
 
+/**
+ * @param {object} state1
+ * @param {object} state2
+ * @param {number} frac 0..1
+ */
 function lerpState(state1, state2, frac) {
-    let state = {};
-    for (let id in state1) {
-        state[id] = lerpEntity(id, state1, state2, frac);
+    let newState = {};
+    let oldState = (frac < 0.5 ? state1 : state2);
+    for (let id in oldState) {
+        newState[id] = lerpEntity(id, state1, state2, frac);
     }
-    return state;
+    return newState;
 }
 
 export default class StateQueue {
@@ -35,20 +45,29 @@ export default class StateQueue {
      * @param {number} backlog Maximum age (in ms)
      */
     constructor(backlog = 1000) {
-        this._backlog = backlog;
         this._data = [];
+        this.setBacklog(backlog);
     }
 
-    getSize() {
-        return this._data.length;
+    getSize() { return this._data.length; }
+
+    setBacklog(backlog) {
+        this._backlog = backlog;
+        return this;
     }
 
     add(time, state) {
-        /* IMPROVE: guarantee monotonic time by checking for proper insert index? */
-        this._data.push({time, state});
+        let data = this._data;
+        let maxAge = time-this._backlog;
 
-        /* remove old records */
-        while (time-this._data[0].time > this._backlog) { this._data.shift(); }
+        /* front of the queue: discard events that are *newer* than this one */
+        while (data.length && data[data.length-1].time >= time) { data.pop(); }
+
+        /* push to the front */
+        data.push({time, state});
+
+        /* back of the queue: discard old records */
+        while (data.length > 2 && data[0].time < maxAge) { data.shift(); }
     }
 
     getNewestState() {
@@ -66,12 +85,13 @@ export default class StateQueue {
     }
 
     getStateAt(time) {
-        let len = this._data.length;
+        let data = this._data;
+        let len = data.length;
         if (len == 0) { return null; }
 
         let indexBefore = -1, indexAfter = -1;
-        for (let i=0; i<this._data.length; i++) {
-            let item = this._data[i];
+        for (let i=0; i<data.length; i++) {
+            let item = data[i];
             if (item.time <= time) { indexBefore = i; }
             if (item.time >= time) {
                 indexAfter = i;
@@ -80,12 +100,15 @@ export default class StateQueue {
         }
 
         if (indexBefore == -1) { // older than available
-            return this._data[0].state;
+//            console.log("<")
+            return data[0].state;
         } else if (indexAfter == -1) { // newer than available
-            return this._data[len-1].state;
+//            console.log(">")
+            return data[len-1].state;
         } else {
-            let item1 = this._data[indexBefore];
-            let item2 = this._data[indexAfter];
+//            console.log("=")
+            let item1 = data[indexBefore];
+            let item2 = data[indexAfter];
             let frac = (time - item1.time) / (item2.time - item1.time);
 
             return lerpState(item1.state, item2.state, frac);
