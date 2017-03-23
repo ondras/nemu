@@ -1,5 +1,5 @@
-import Client from "phys/client.js";
-import {ProxyTransport} from "phys/transport.js";
+import Client from "nemu/client.js";
+import {ProxyTransport} from "nemu/transport.js";
 import Renderer from "./renderer.js";
 
 export default class DemoClient {

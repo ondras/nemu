@@ -46,7 +46,7 @@ class Renderer {
 			ctx.arc(C + x, C + y, SIZE * PLAYER_RADIUS, 0, PI2, true);
 			ctx.strokeStyle = entity.color;
 			ctx.stroke();
-		}
+		};
 	}
 }
 
@@ -362,8 +362,6 @@ class Transport {
     onOpen() {}
 }
 
-
-
 class ProxyTransport extends Transport {
     constructor() {
         super();
@@ -444,7 +442,7 @@ class DemoClient {
 
         let input = this._buildRange();
         input.oninput = e => this._setLatency(e.target.valueAsNumber);
-        node.appendChild(input);
+        node.appendChild(input);;
 
         let span = document.createElement("span");
         node.appendChild(span);
@@ -459,7 +457,7 @@ class DemoClient {
 
         let input = this._buildRange();
         input.oninput = e => this._setDelay(e.target.valueAsNumber);
-        node.appendChild(input);
+        node.appendChild(input);;
 
         let span = document.createElement("span");
         node.appendChild(span);
@@ -487,6 +485,7 @@ class DemoClient {
     }
 }
 
+/* velocity in rads/s */
 let model = {
     "a": {angle:0, color:"red", velocity:1},
     "b": {angle:Math.PI, color:"blue", velocity:-1}

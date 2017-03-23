@@ -1,5 +1,5 @@
 import Renderer from "./renderer.js";
-import Server from "phys/server.js";
+import Server from "nemu/server.js";
 import DemoClient from "./democlient.js";
 
 /* velocity in rads/s */
