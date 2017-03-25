@@ -1,6 +1,6 @@
 # nemu
 
-This is a sample JS library that demonstrates some of the principles described in my [devel.cz 2017 talk](http://ondras.zarovi.cz/slides/devel2017/).
+This is a sample JS library that demonstrates some of the principles described in my [2017 devel.cz talk](http://ondras.zarovi.cz/slides/devel2017/).
 
 The library is a Work-In-Progress.
 
