@@ -6,7 +6,7 @@ export const server = {
 };
 
 export const client = {
-	delay: 100
+	delay: 0
 };
 
 export const app = {

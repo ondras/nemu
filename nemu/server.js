@@ -4,9 +4,9 @@ import { app as appDefaults, server as serverDefaults } from "./util/defaults.js
 import merge from "./util/merge.js";
 
 export default class Server extends Component {
-	constructor(app, options) {
-		options = merge(serverDefaults, options);
-		app = merge(appDefaults, app);
+	constructor(app = {}, options = {}) {
+		merge(options, serverDefaults);
+		merge(app, appDefaults);
 		super("server", app, options);
 
 		this._startTime = 0;
@@ -14,6 +14,7 @@ export default class Server extends Component {
 	}
 
 	addClient(socket) {
+		this._log(2, "new client");
 		socket.onMessage = (message) => this._onMessage(socket, message);
 		this._clients.push(socket);
 	}

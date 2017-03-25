@@ -4,9 +4,9 @@ import { app as appDefaults, client as clientDefaults } from "./util/defaults.js
 import merge from "./util/merge.js";
 
 export default class Client extends Component {
-	constructor(socket, app, options) {
-		options = merge(clientDefaults, options);
-		app = merge(appDefaults, app);
+	constructor(socket, app = {}, options = {}) {
+		merge(options, clientDefaults);
+		merge(app, appDefaults);
 		super("client", app, options);
 
 		this._socket = socket;

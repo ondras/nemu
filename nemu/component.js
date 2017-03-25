@@ -3,19 +3,19 @@ import StateQueue from "./util/statequeue.js";
 import merge from "./util/merge.js";
 
 export default class Component {
-	constructor(loggerPrefix, app, options) {
-		this._app = app;
+	constructor(loggerPrefix, app, options = {}) {
 		this._options = {};
+		this._app = app;
 		this._stateQueue = new StateQueue(app);
 
 		this.setOptions(options);
-		this._logger = new Logger(loggerPrefix, options.log);
+		this._logger = new Logger(loggerPrefix, this._options.log);
 
 		setInterval(() => this._dumpStats(), 2000);
 	}
 
 	setOptions(options) {
-		this._options = merge(this._options, options);
+		merge(this._options, options);
 		return this;
 	}
 

@@ -80,41 +80,48 @@ class StateQueue {
 			}
 		}
 
-		if (indexBefore == -1) { // older than available
+		if (indexBefore == -1) { /* older than available */
 //            console.log("<")
-			return data[0].state;
-		} else if (indexAfter == -1) { // newer than available
+			if (data.length == 1) { return data[0].state; }
+			/* extrapolate to past */
+			indexBefore = 0;
+			indexAfter = 1;
+		} else if (indexAfter == -1) { /* newer than available */
 //           console.log(">")
-			return data[len-1].state;
+			if (data.length == 1) { return data[len-1].state; }
+			/* extrapolate to future */
+			indexBefore = len-2;
+			indexAfter = len-1;
 		} else {
-//            console.log("=")
-			let item1 = data[indexBefore];
-			let item2 = data[indexAfter];
-			let frac = (time - item1.time) / (item2.time - item1.time);
-
-			return this._app.state.interpolate(item1.state, item2.state, frac);
+// 		     console.log("=")
 		}
+
+		let item1 = data[indexBefore];
+		let item2 = data[indexAfter];
+		let frac = (time - item1.time) / (item2.time - item1.time);
+
+		return this._app.state.interpolate(item1.state, item2.state, frac);
 	}
 }
 
 function merge(obj1, obj2) {
-	return Object.assign({}, obj1, obj2);
+	return Object.assign(obj1, obj2);
 }
 
 class Component {
-	constructor(loggerPrefix, app, options) {
-		this._app = app;
+	constructor(loggerPrefix, app, options = {}) {
 		this._options = {};
+		this._app = app;
 		this._stateQueue = new StateQueue(app);
 
 		this.setOptions(options);
-		this._logger = new Logger(loggerPrefix, options.log);
+		this._logger = new Logger(loggerPrefix, this._options.log);
 
 		setInterval(() => this._dumpStats(), 2000);
 	}
 
 	setOptions(options) {
-		this._options = merge(this._options, options);
+		merge(this._options, options);
 		return this;
 	}
 
@@ -135,7 +142,7 @@ const server$1 = {
 };
 
 const client$1 = {
-	delay: 100
+	delay: 0
 };
 
 const app$1 = {
@@ -143,9 +150,9 @@ const app$1 = {
 };
 
 class Client extends Component {
-	constructor(socket, app$$1, options) {
-		options = merge(client$1, options);
-		app$$1 = merge(app$1, app$$1);
+	constructor(socket, app$$1 = {}, options = {}) {
+		merge(options, client$1);
+		merge(app$$1, app$1);
 		super("client", app$$1, options);
 
 		this._socket = socket;
@@ -219,9 +226,9 @@ class Client extends Component {
 }
 
 class Server extends Component {
-	constructor(app$$1, options) {
-		options = merge(server$1, options);
-		app$$1 = merge(app$1, app$$1);
+	constructor(app$$1 = {}, options = {}) {
+		merge(options, server$1);
+		merge(app$$1, app$1);
 		super("server", app$$1, options);
 
 		this._startTime = 0;
@@ -229,6 +236,7 @@ class Server extends Component {
 	}
 
 	addClient(socket) {
+		this._log(2, "new client");
 		socket.onMessage = (message) => this._onMessage(socket, message);
 		this._clients.push(socket);
 	}

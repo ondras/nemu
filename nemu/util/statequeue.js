@@ -59,19 +59,26 @@ export default class StateQueue {
 			}
 		}
 
-		if (indexBefore == -1) { // older than available
+		if (indexBefore == -1) { /* older than available */
 //            console.log("<")
-			return data[0].state;
-		} else if (indexAfter == -1) { // newer than available
+			if (data.length == 1) { return data[0].state; }
+			/* extrapolate to past */
+			indexBefore = 0;
+			indexAfter = 1;
+		} else if (indexAfter == -1) { /* newer than available */
 //           console.log(">")
-			return data[len-1].state;
+			if (data.length == 1) { return data[len-1].state; }
+			/* extrapolate to future */
+			indexBefore = len-2;
+			indexAfter = len-1;
 		} else {
-//            console.log("=")
-			let item1 = data[indexBefore];
-			let item2 = data[indexAfter];
-			let frac = (time - item1.time) / (item2.time - item1.time);
-
-			return this._app.state.interpolate(item1.state, item2.state, frac);
+// 		     console.log("=")
 		}
+
+		let item1 = data[indexBefore];
+		let item2 = data[indexAfter];
+		let frac = (time - item1.time) / (item2.time - item1.time);
+
+		return this._app.state.interpolate(item1.state, item2.state, frac);
 	}
 }
