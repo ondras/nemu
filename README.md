@@ -15,6 +15,7 @@ The library is a Work-In-Progress.
       - [ ] Lag compensation
       - [ ] Client-side prediction
     - [ ] Misc
+      - [ ] Disconnecting
       - [x] Logger
       - [ ] Socket abstractions
       - [x] Interpolators
