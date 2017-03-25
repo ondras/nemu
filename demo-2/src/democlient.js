@@ -1,20 +1,12 @@
 import Client from "nemu/client.js";
-import {ProxyTransport} from "nemu/transport.js";
+import FakeClientSocket from "nemu/socket/fake.js";
 import Renderer from "./renderer.js";
 
 export default class DemoClient {
-    constructor(server) {
-        let serverTransport = new ProxyTransport();
-        server.addClient(serverTransport);
+    constructor(server, app) {
+        this._socket = new FakeClientSocket(server);
+        this._client = new Client(this._socket, app);
 
-        let clientTransport = new ProxyTransport();
-        let client = new Client(clientTransport);
-
-        serverTransport.setOther(clientTransport);
-        clientTransport.setOther(serverTransport);
-
-        this._client = client;
-        this._transports = [serverTransport, clientTransport];
         this._node = this._build();
 
         this._setLatency(0);
@@ -37,7 +29,6 @@ export default class DemoClient {
         node.appendChild(r.getNode());
 
         return node;
-
     }
 
     _buildLatency() {
@@ -47,7 +38,7 @@ export default class DemoClient {
 
         let input = this._buildRange();
         input.oninput = e => this._setLatency(e.target.valueAsNumber);
-        node.appendChild(input);;
+        node.appendChild(input);
 
         let span = document.createElement("span");
         node.appendChild(span);
@@ -73,7 +64,7 @@ export default class DemoClient {
     _setLatency(latency) {
        this._node.querySelector(".latency input").value = latency;
        this._node.querySelector(".latency span").innerHTML = latency;
-       this._transports.forEach(t => t.setLatency(latency));
+       this._socket.setLatency(latency);
     }
 
     _setDelay(delay) {

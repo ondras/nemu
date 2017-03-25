@@ -45,7 +45,7 @@ export default class FakeClient extends Proxy {
 
 	setLatency(latency) {
 		this._latency = latency;
-		this._other.latency = latency;
+		this._other._latency = latency;
 		return this;
 	}
 }

@@ -1,4 +1,4 @@
-(function (nemu_transport_js) {
+(function () {
 'use strict';
 
 const ARENA_RADIUS = 0.4;
@@ -56,13 +56,15 @@ class Logger {
 		this._options = options;
 	}
 
-	log(level, ...data) {
+	log(level, msg, ...args) {
 		if (level < this._options.level) { return; }
-		this._options.facility(`[${this._prefix}]`, ...data);
+		msg = `[${this._prefix}] ${msg}`;
+		args.unshift(msg);
+		this._options.facility(...args);
 	}
 }
 
-class StateQueue$1 {
+class StateQueue {
 	/**
 	 * @param {number} backlog Maximum age (in ms)
 	 */
@@ -115,39 +117,57 @@ class StateQueue$1 {
 		let indexBefore = -1, indexAfter = -1;
 		for (let i=0; i<data.length; i++) {
 			let item = data[i];
-			if (item.time <= time) { indexBefore = i; }
-			if (item.time >= time) {
+			if (item.time == time) { return item.state; }
+			if (item.time < time) { indexBefore = i; }
+			if (item.time > time) {
 				indexAfter = i;
 				break;
 			}
 		}
 
-		if (indexBefore == -1) { // older than available
+		if (indexBefore == -1) { /* older than available */
 //            console.log("<")
-			return data[0].state;
-		} else if (indexAfter == -1) { // newer than available
-//            console.log(">")
-			return data[len-1].state;
+			if (data.length == 1) { return data[0].state; }
+			/* extrapolate to past */
+			indexBefore = 0;
+			indexAfter = 1;
+		} else if (indexAfter == -1) { /* newer than available */
+//           console.log(">")
+			if (data.length == 1) { return data[len-1].state; }
+			/* extrapolate to future */
+			indexBefore = len-2;
+			indexAfter = len-1;
 		} else {
-//            console.log("=")
-			let item1 = data[indexBefore];
-			let item2 = data[indexAfter];
-			let frac = (time - item1.time) / (item2.time - item1.time);
-
-			return this._app.state.interpolate(item1.state, item2.state, frac);
+// 		     console.log("=")
 		}
+
+		let item1 = data[indexBefore];
+		let item2 = data[indexAfter];
+		let frac = (time - item1.time) / (item2.time - item1.time);
+
+		return this._app.state.interpolate(item1.state, item2.state, frac);
 	}
 }
 
-class Component {
-	constructor(loggerPrefix, app, options) {
-		this._logger = new Logger(loggerPrefix, options.log);
-		this._app = app;
-		this._options = options;
+function merge(obj1, obj2) {
+	return Object.assign(obj1, obj2);
+}
 
-		this._stateQueue = new StateQueue$1();
+class Component {
+	constructor(loggerPrefix, app, options = {}) {
+		this._options = {};
+		this._app = app;
+		this._stateQueue = new StateQueue(app);
+
+		this.setOptions(options);
+		this._logger = new Logger(loggerPrefix, this._options.log);
 
 		setInterval(() => this._dumpStats(), 2000);
+	}
+
+	setOptions(options) {
+		merge(this._options, options);
+		return this;
 	}
 
 	_dumpStats() {
@@ -159,29 +179,32 @@ class Component {
 	}
 }
 
-const server$1 = {
+const log = {
+	facility: console.log,
+	level: 1
+};
 
+const server$1 = {
+	fps: {
+		sim: 60,
+		notify: 12
+	},
+	log
 };
 
 const client = {
-	delay: 0
+	delay: 0,
+	log
 };
 
-const app = {
+const app$1 = {
 
 };
 
-function merge(obj1, obj2) {
-	return Object.assign({}, obj1, obj2);
-}
-
-const SIM = 60; // FPS
-const NOTIFY = 8; // FPS
-
-class Server {
-	constructor(app$$1, options) {
-		options = merge(server$1, options);
-		app$$1 = merge(app, app$$1);
+class Server extends Component {
+	constructor(app$$1 = {}, options = {}) {
+		merge(options, server$1);
+		merge(app$$1, app$1);
 		super("server", app$$1, options);
 
 		this._startTime = 0;
@@ -189,6 +212,7 @@ class Server {
 	}
 
 	addClient(socket) {
+		this._log(2, "new client");
 		socket.onMessage = (message) => this._onMessage(socket, message);
 		this._clients.push(socket);
 	}
@@ -201,12 +225,14 @@ class Server {
 		this._startTime = Date.now();
 		this._stateQueue.add(this._now(), this._app.state.initial());
 
-		setInterval(() => this._tick(), 1000/SIM);
-		setInterval(() => this._notify(), 1000/NOTIFY);
+		setInterval(() => this._tick(), 1000/this._options.fps.sim);
+		setInterval(() => this._notify(), 1000/this._options.fps.notify);
+
+		return this;
 	}
 
 	_onMessage(clientSocket, {type, data, t}) {
-		this._log("received message %s", type);
+		this._log(0, "received message %s", type);
 		switch (type) {
 			case "hai":
 				this._send(clientSocket, {type:"xxx"});
@@ -220,7 +246,7 @@ class Server {
 
 	_tick() {
 		let oldState = this._stateQueue.getNewestState();
-		let oldtime = this._stateQueue.getNewestTime();
+		let oldTime = this._stateQueue.getNewestTime();
 		let newTime = this._now();
 		let dt = (newTime-oldTime)/1000;
 
@@ -250,104 +276,147 @@ class Server {
 	}
 }
 
-const DEFAULT_OPTIONS = {
-    delay: 0
-};
-
 class Client extends Component {
-    constructor(socket, app$$1, options) {
-        options = merge(client, options);
-        app$$1 = merge(app, app$$1);
-        super("client", app$$1, options);
+	constructor(socket, app$$1 = {}, options = {}) {
+		merge(options, client);
+		merge(app$$1, app$1);
+		super("client", app$$1, options);
 
-        this._socket = socket;
-        this._socket.onOpen = () => this._onOpen();
-        this._socket.onMessage = (message) => this._onMessage(message);
+		this._socket = socket;
+		this._socket.onOpen = () => this._onOpen();
+		this._socket.onMessage = (message) => this._onMessage(message);
 
-        this._options = Object.assign({}, DEFAULT_OPTIONS);
-        this._serverTimeOffset = null;
-        this._states = new StateQueue();
+		this._serverTimeOffset = null;
+	}
 
-        this.setOptions(options);
-    }
+	setOptions(options) {
+		super.setOptions(options);
+		/*
+			Given a current (server) time T and latency L, the latest server-side snapshot
+			is from T-L. Our StateQueue stores records from T-L (newest) to T-L-backlog (oldest).
 
-    setOptions(options) {
-        Object.assign(this._options, options);
+			When retrieving state data, we use _now(), which corresponds to T-delay. We need to make sure
+			this value is somewhere in the middle of the StateQueue.
 
-        /*
-            Given a current (server) time T and latency L, the latest server-side snapshot
-            is from T-L. Our StateQueue stores records from T-L (newest) to T-L-backlog (oldest).
+			(The delay value shall be always greater or equal to L, or we will never have data recent enough.)
+			
+			0-------------------------------T
+						 <---backlog---><-L->
+								<---delay--->
+								^
+								\------_now()
 
-            When retrieving state data, we use _now(), which corresponds to T-delay. We need to make sure
-            this value is somewhere in the middle of the StateQueue.
+			The largest backlog is necessary for L=0. In this case, we need it to be (>=1 snapshot) larger than the delay. 
 
-            (The delay value shall be always greater or equal to L, or we will never have data recent enough.)
-            
-            0-------------------------------T
-                         <---backlog---><-L->
-                                <---delay--->
-                                ^
-                                \------_now()
+			150 is a large safe inter-snapshot delay for reasonable servers.
+		*/
+		this._stateQueue.setBacklog(this._options.delay + 150);
 
-            The largest backlog is necessary for L=0. In this case, we need it to be (one snapshot) larger than the delay. 
+		return this;
+	}
 
-            150 is a large safe inter-snapshot delay for reasonable servers.
-        */
-        this._stateQueue.setBacklog(this._options.delay + 150);
+	getState() {
+		return this._stateQueue.getStateAt(this._now());
+	}
 
-        return this;
-    }
+	_onMessage({type, data, t}) {
+		if (type != "fyi") { this._log(0, "received message %s", type); }
 
-    getState() {
-        return this._stateQueue.getStateAt(this._now());
-    }
+		switch (type) {
+			case "fyi":
+				this._stateQueue.add(t, data);
+			break;
 
-    _onMessage({type, data, t}) {
-        if (type != "fyi") { this._log("received message %s", type); }
+			case "wut":
+				let now = Date.now();
+				let latency = now - this._pingTime;
 
-        switch (type) {
-            case "fyi":
-                this._stateQueue.add(t, data);
-            break;
+				this._serverTimeOffset = (t - now) + latency/2;
+				this._log(2, "latency %s ms round-trip", latency);
+				this._log(2, "server time offset %s", this._serverTimeOffset);
+			break;
+		}
+	}
 
-            case "wut":
-                let now = Date.now();
-                let latency = now - this._pingTime;
+	_now() {
+		return Date.now() + this._serverTimeOffset - this._options.delay;
+	}
 
-                this._serverTimeOffset = (t - now) + latency/2;
-                this._log("latency %s ms round-trip", latency);
-                this._log("server time offset %s", this._serverTimeOffset);
-            break;
-        }
-    }
+	_send(message) {
+		this._socket.send(message);
+	}
 
-    _now() {
-        return Date.now() + this._serverTimeOffset - this._options.delay;
-    }
+	_onOpen() {
+		this._pingTime = Date.now();
+		this._send({type:"lol"});
+	}
+}
 
-    _send(message) {
-        this._socket.send(message);
-    }
+class Socket {
+	onOpen() {}
 
-    _onOpen() {
-        this._pingTime = Date.now();
-        this._send({type:"lol"});
-    }
+	send(message) {}
+	onMessage(message) {}
+
+	close() {}
+	onClose() {}
+}
+
+class Proxy extends Socket {
+	send(message) {
+		if (this._latency) {
+			setTimeout(() => {
+				this._other.onMessage(message);
+			}, this._latency);
+		} else {
+			this._other.onMessage(message);
+		}
+		return this;
+	}
+
+	close() {
+		if (this._latency) {
+			setTimeout(() => {
+				this._other.onClose();
+			}, this._latency);
+		} else {
+			this._other.onClose();
+		}
+		return this;
+	}
+}
+
+class FakeServer extends Proxy {
+	constructor(clientSocket) {
+		super();
+		this._other = clientSocket;
+	}
+}
+
+class FakeClient extends Proxy {
+	constructor(server) {
+		super();
+		this._latency = 0;
+		this._other = new FakeServer(this);
+
+		setTimeout(() => {
+			server.addClient(this._other);
+			this.onOpen();
+		}, 0);
+	}
+
+	setLatency(latency) {
+		this._latency = latency;
+		this._other._latency = latency;
+		return this;
+	}
 }
 
 class DemoClient {
-    constructor(server) {
-        let serverTransport = new nemu_transport_js.ProxyTransport();
-        server.addClient(serverTransport);
+    constructor(server, app) {
+        this._socket = new FakeClient(server);
+        this._client = new Client(this._socket, app);
 
-        let clientTransport = new nemu_transport_js.ProxyTransport();
-        let client = new Client(clientTransport);
-
-        serverTransport.setOther(clientTransport);
-        clientTransport.setOther(serverTransport);
-
-        this._client = client;
-        this._transports = [serverTransport, clientTransport];
         this._node = this._build();
 
         this._setLatency(0);
@@ -370,7 +439,6 @@ class DemoClient {
         node.appendChild(r.getNode());
 
         return node;
-
     }
 
     _buildLatency() {
@@ -406,7 +474,7 @@ class DemoClient {
     _setLatency(latency) {
        this._node.querySelector(".latency input").value = latency;
        this._node.querySelector(".latency span").innerHTML = latency;
-       this._transports.forEach(t => t.setLatency(latency));
+       this._socket.setLatency(latency);
     }
 
     _setDelay(delay) {
@@ -423,23 +491,60 @@ class DemoClient {
     }
 }
 
-/* velocity in rads/s */
+function lerp$1(value1, value2, frac) {
+	return value1 + frac * (value2 - value1);
+}
+
+function lerp$2(arr1, arr2, frac) {
+	return arr1.map((val, index) => lerp$1(val, arr2[index]), frac);
+}
+
+function lerp$$1(obj1, obj2, frac) {
+	return Object.keys(obj1).reduce((acc, key) => {
+		let val = obj1[key];
+		switch (true) {
+			case typeof(val) == "number": acc[key] = lerp$1(val, obj2[key], frac); break;
+			case val instanceof Array: acc[key] = lerp$2(val, obj2[key], frac); break;
+			default: acc[key] = val;
+		}
+		return acc;
+	}, {});
+}
+
 let model = {
     "a": {angle:0, color:"red", velocity:1},
     "b": {angle:Math.PI, color:"blue", velocity:-1}
 };
 
-let server = new Server(model);
-server.start();
+const app = {
+	state: {
+		initial: () => model,
+		interpolate: (state1, state2, frac) => {
+			let newState = {};
+			let oldState = (frac < 0.5 ? state1 : state2);
+			for (let id in oldState) {
+				let e1 = state1[id];
+				let e2 = state2[id];
+				if (!e1 || !e2) { continue; }
+				newState[id] = lerp$$1(e1, e2, frac);
+			}
+			return newState;
+		},
+		advance: (oldState, dt) => Object.keys(oldState).reduce((acc, key) => {
+			let entity = Object.assign({}, oldState[key]);
+			entity.angle += dt * entity.velocity;
+			acc[key] = entity;
+			return acc;
+		}, {})
+	}
+};
+
+let server = new Server(app).start();
 
 let r1 = new Renderer(server);
 document.body.appendChild(r1.getNode());
 
-let c1 = new DemoClient(server);
+let c1 = new DemoClient(server, app);
 document.body.appendChild(c1.getNode());
-/*
-let c2 = new DemoClient(server);
-document.body.appendChild(c2.getNode());
-*/
 
-}(nemu_transport_js));
+}());

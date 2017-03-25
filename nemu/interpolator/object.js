@@ -5,9 +5,10 @@ export function lerp(obj1, obj2, frac) {
 	return Object.keys(obj1).reduce((acc, key) => {
 		let val = obj1[key];
 		switch (true) {
-			case typeof(val) == "number": result[key] = slerp(val, obj2[key], frac); break;
-			case val instanceof Array: result[key] = alerp(val, obj2[key], frac); break;
-			default: result[key] = val;
+			case typeof(val) == "number": acc[key] = slerp(val, obj2[key], frac); break;
+			case val instanceof Array: acc[key] = alerp(val, obj2[key], frac); break;
+			default: acc[key] = val;
 		}
+		return acc;
 	}, {});
 }
