@@ -11,7 +11,7 @@ The library is a Work-In-Progress.
       - [x] Authoritative server
       - [x] Time sync
       - [x] Client interpolation
-      - [ ] Client extrapolation
+      - [x] Client extrapolation
       - [ ] Lag compensation
       - [ ] Client-side prediction
     - [ ] Misc
