@@ -1,92 +1,78 @@
-import log from "./log.js";
-import StateQueue from "./statequeue.js";
+import Component from "./component.js";
 
-const SIM = 60; // FPS
-const NOTIFY = 8; // FPS
+import { app as appDefaults, server as serverDefaults } from "./util/defaults.js";
+import merge from "./util/merge.js";
 
-export default class Server {
-    constructor(initialState) {
-        this._startTime = this._now();
-        this._clients = [];
+export default class Server extends Component {
+	constructor(app, options) {
+		options = merge(serverDefaults, options);
+		app = merge(appDefaults, app);
+		super("server", app, options);
 
-        this._states = new StateQueue(1000);
-        this._states.add(this._now(), initialState);
-    }
+		this._startTime = 0;
+		this._clients = [];
+	}
 
-    addClient(transport) {
-        transport.onMessage = (message) => this._onMessage(transport, message);
-        this._clients.push(transport)
-    }
+	addClient(socket) {
+		socket.onMessage = (message) => this._onMessage(socket, message);
+		this._clients.push(socket);
+	}
 
-    getState() {
-        return this._states.getNewestState();
-    }
+	getState() {
+		return this._stateQueue.getNewestState();
+	}
 
-    start() {
-        setInterval(() => this._tick(), 1000/SIM);
-        setInterval(() => this._notify(), 1000/NOTIFY);
-        setInterval(() => this._dumpStats(), 2000);
-    }
+	start() {
+		this._startTime = Date.now();
+		this._stateQueue.add(this._now(), this._app.state.initial());
 
-    _onMessage(clientTransport, {type, data, t}) {
-        this._log("received message %s", type);
-        switch (type) {
-            case "hai":
-                this._send(clientTransport, {type:"xxx"});
-            break;
+		setInterval(() => this._tick(), 1000/this._options.fps.sim);
+		setInterval(() => this._notify(), 1000/this._options.fps.notify);
 
-            case "lol":
-                this._send(clientTransport, {type:"wut"});
-            break;
-        }
-    }
+		return this;
+	}
 
-    _tick() {
-        let state = this._states.getNewestState();
-        let time = this._states.getNewestTime();
-        let now = this._now();
+	_onMessage(clientSocket, {type, data, t}) {
+		this._log(0, "received message %s", type);
+		switch (type) {
+			case "hai":
+				this._send(clientSocket, {type:"xxx"});
+			break;
 
-        let newState = this._createNewState(state, (now-time)/1000);
-        this._states.add(now, newState);
-    }
+			case "lol":
+				this._send(clientSocket, {type:"wut"});
+			break;
+		}
+	}
 
-    _createNewState(state, dt) {
-        let newState = {};
-        for (let id in state) {
-            let entity = state[id];
-            let newEntity = Object.assign({}, entity);
-            newEntity.angle += dt * newEntity.velocity;
-            newState[id] = newEntity;
-        }
-        return newState;
-    }
+	_tick() {
+		let oldState = this._stateQueue.getNewestState();
+		let oldTime = this._stateQueue.getNewestTime();
+		let newTime = this._now();
+		let dt = (newTime-oldTime)/1000;
 
-    _send(clientTransport, message) {
-        if (!message.t) { message.t = this._now(); }
-        clientTransport.send(message);
-    }
+		let newState = this._app.state.advance(oldState, dt);
+		this._stateQueue.add(newTime, newState);
+	}
 
-    _now() {
-        return Date.now() - (this._startTime || 0);
-    }
+	_send(clientSocket, message) {
+		if (!message.t) { message.t = this._now(); }
+		clientSocket.send(message);
+	}
 
-    _notify() {
-        let state = this._states.getNewestState();
-        let time = this._states.getNewestTime();
+	_now() {
+		return Date.now() - this._startTime;
+	}
 
-        let message = {
-            type: "fyi",
-            data: state,
-            t: time
-        }
-        this._clients.forEach(t => this._send(t, message));
-    }
+	_notify() {
+		let state = this._stateQueue.getNewestState();
+		let time = this._stateQueue.getNewestTime();
 
-    _dumpStats() {
-        this._log("stats: queue size: %s", this._states.getSize());
-    }
-
-    _log(msg, ...args) {
-        return log(`[server] ${msg}`, ...args);
-    }
+		let message = {
+			type: "fyi",
+			data: state,
+			t: time
+		}
+		this._clients.forEach(t => this._send(t, message));
+	}
 }

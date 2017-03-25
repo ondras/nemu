@@ -1,94 +1,80 @@
-import log from "./log.js";
-import StateQueue from "./statequeue.js";
+import Component from "./component.js";
 
-const DEFAULT_OPTIONS = {
-    delay: 0
-}
+import { app as appDefaults, client as clientDefaults } from "./util/defaults.js";
+import merge from "./util/merge.js";
 
-export default class Client {
-    constructor(transport, options) {
-        this._transport = transport;
-        this._transport.onOpen = () => this._onOpen();
-        this._transport.onMessage = (message) => this._onMessage(message);
+export default class Client extends Component {
+	constructor(socket, app, options) {
+		options = merge(clientDefaults, options);
+		app = merge(appDefaults, app);
+		super("client", app, options);
 
-        this._options = Object.assign({}, DEFAULT_OPTIONS);
-        this._serverTimeOffset = null;
-        this._states = new StateQueue();
+		this._socket = socket;
+		this._socket.onOpen = () => this._onOpen();
+		this._socket.onMessage = (message) => this._onMessage(message);
 
-        this.setOptions(options);
+		this._serverTimeOffset = null;
+	}
 
-        setInterval(() => this._dumpStats(), 2000);
-    }
+	setOptions(options) {
+		super.setOptions(options);
+		/*
+			Given a current (server) time T and latency L, the latest server-side snapshot
+			is from T-L. Our StateQueue stores records from T-L (newest) to T-L-backlog (oldest).
 
-    setOptions(options) {
-        Object.assign(this._options, options);
+			When retrieving state data, we use _now(), which corresponds to T-delay. We need to make sure
+			this value is somewhere in the middle of the StateQueue.
 
-        /*
-            Given a current (server) time T and latency L, the latest server-side snapshot
-            is from T-L. Our StateQueue stores records from T-L (newest) to T-L-backlog (oldest).
+			(The delay value shall be always greater or equal to L, or we will never have data recent enough.)
+			
+			0-------------------------------T
+						 <---backlog---><-L->
+								<---delay--->
+								^
+								\------_now()
 
-            When retrieving state data, we use _now(), which corresponds to T-delay. We need to make sure
-            this value is somewhere in the middle of the StateQueue.
+			The largest backlog is necessary for L=0. In this case, we need it to be (>=1 snapshot) larger than the delay. 
 
-            (The delay value shall be always greater or equal to L, or we will never have data recent enough.)
-            
-            0-------------------------------T
-                         <---backlog---><-L->
-                                <---delay--->
-                                ^
-                                \------_now()
+			150 is a large safe inter-snapshot delay for reasonable servers.
+		*/
+		this._stateQueue.setBacklog(this._options.delay + 150);
 
-            The largest backlog is necessary for L=0. In this case, we need it to be (one snapshot) larger than the delay. 
+		return this;
+	}
 
-            150 is a large safe inter-snapshot delay for reasonable servers.
-        */
-        this._states.setBacklog(this._options.delay + 150);
+	getState() {
+		return this._stateQueue.getStateAt(this._now());
+	}
 
-        return this;
-    }
+	_onMessage({type, data, t}) {
+		if (type != "fyi") { this._log(0, "received message %s", type); }
 
-    getState() {
-        return this._states.getStateAt(this._now());
-    }
+		switch (type) {
+			case "fyi":
+				this._stateQueue.add(t, data);
+			break;
 
-    _onMessage({type, data, t}) {
-        if (type != "fyi") { this._log("received message %s", type); }
+			case "wut":
+				let now = Date.now();
+				let latency = now - this._pingTime;
 
-        switch (type) {
-            case "fyi":
-                this._states.add(t, data);
-            break;
+				this._serverTimeOffset = (t - now) + latency/2;
+				this._log(2, "latency %s ms round-trip", latency);
+				this._log(2, "server time offset %s", this._serverTimeOffset);
+			break;
+		}
+	}
 
-            case "wut":
-                let now = Date.now();
-                let latency = now - this._pingTime;
+	_now() {
+		return Date.now() + this._serverTimeOffset - this._options.delay;
+	}
 
-                this._serverTimeOffset = (t - now) + latency/2;
-                this._log("latency %s ms round-trip", latency);
-                this._log("server time offset %s", this._serverTimeOffset);
-            break;
-        }
-    }
+	_send(message) {
+		this._socket.send(message);
+	}
 
-    _now() {
-        return Date.now() + this._serverTimeOffset - this._options.delay;
-    }
-
-    _send(message) {
-        this._transport.send(message);
-    }
-
-    _onOpen() {
-        this._pingTime = Date.now();
-        this._send({type:"lol"});
-    }
-
-    _dumpStats() {
-        this._log("stats: queue size: %s", this._states.getSize());
-    }
-
-    _log(msg, ...args) {
-        return log(`[client] ${msg}`, ...args);
-    }
-
+	_onOpen() {
+		this._pingTime = Date.now();
+		this._send({type:"lol"});
+	}
 }

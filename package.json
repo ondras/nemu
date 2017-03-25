@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "rollup": "cd demo && rollup -c -w"
+    "demo-1": "cd demo-1 && rollup -c -w",
+    "demo-2": "cd demo-2 && rollup -c -w"
   },
   "author": "",
   "license": "ISC",
