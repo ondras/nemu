@@ -40,8 +40,8 @@ class Renderer {
 
 		for (let id in model) {
 			let entity = model[id];
-			let x = Math.cos(entity.angle) * ARENA_RADIUS * SIZE;
-			let y = Math.sin(entity.angle) * ARENA_RADIUS * SIZE;
+			let x = entity.position[0] * ARENA_RADIUS * SIZE;
+			let y = entity.position[1] * ARENA_RADIUS * SIZE;
 			ctx.beginPath();
 			ctx.arc(C + x, C + y, SIZE * PLAYER_RADIUS, 0, PI2, true);
 			ctx.strokeStyle = entity.color;
@@ -496,7 +496,7 @@ function lerp$1(value1, value2, frac) {
 }
 
 function lerp$2(arr1, arr2, frac) {
-	return arr1.map((val, index) => lerp$1(val, arr2[index]), frac);
+	return arr1.map((val, index) => lerp$1(val, arr2[index], frac));
 }
 
 function lerp$$1(obj1, obj2, frac) {
@@ -512,8 +512,8 @@ function lerp$$1(obj1, obj2, frac) {
 }
 
 let model = {
-    "a": {angle:0, color:"red", velocity:1},
-    "b": {angle:Math.PI, color:"blue", velocity:-1}
+    "a": {angle:0, color:"red", velocity:1, position:[0,0]},
+    "b": {angle:Math.PI, color:"blue", velocity:-1, position:[0,0]}
 };
 
 const app = {
@@ -533,6 +533,7 @@ const app = {
 		advance: (oldState, dt) => Object.keys(oldState).reduce((acc, key) => {
 			let entity = Object.assign({}, oldState[key]);
 			entity.angle += dt * entity.velocity;
+			entity.position = [Math.cos(entity.angle), Math.sin(entity.angle)];
 			acc[key] = entity;
 			return acc;
 		}, {})

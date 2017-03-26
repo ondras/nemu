@@ -6,8 +6,8 @@ import { lerp } from "nemu/interpolator/object.js";
 
 /* velocity in rads/s */
 let model = {
-    "a": {angle:0, color:"red", velocity:1},
-    "b": {angle:Math.PI, color:"blue", velocity:-1}
+    "a": {angle:0, color:"red", velocity:1, position:[0,0]},
+    "b": {angle:Math.PI, color:"blue", velocity:-1, position:[0,0]}
 };
 
 const app = {
@@ -27,6 +27,7 @@ const app = {
 		advance: (oldState, dt) => Object.keys(oldState).reduce((acc, key) => {
 			let entity = Object.assign({}, oldState[key]);
 			entity.angle += dt * entity.velocity;
+			entity.position = [Math.cos(entity.angle), Math.sin(entity.angle)];
 			acc[key] = entity;
 			return acc;
 		}, {})

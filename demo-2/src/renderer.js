@@ -37,8 +37,8 @@ export default class Renderer {
 
 		for (let id in model) {
 			let entity = model[id];
-			let x = Math.cos(entity.angle) * ARENA_RADIUS * SIZE;
-			let y = Math.sin(entity.angle) * ARENA_RADIUS * SIZE;
+			let x = entity.position[0] * ARENA_RADIUS * SIZE;
+			let y = entity.position[1] * ARENA_RADIUS * SIZE;
 			ctx.beginPath();
 			ctx.arc(C + x, C + y, SIZE * PLAYER_RADIUS, 0, PI2, true);
 			ctx.strokeStyle = entity.color;
