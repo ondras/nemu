@@ -24,7 +24,7 @@ The library is a Work-In-Progress.
         - [x] Object
   - [ ] Demos
     - [x] Smallest example (demo-1)
-    - [ ] Non-trivial example with adjustable clients (demo-2)
+    - [x] Non-trivial example with adjustable client (demo-2)
     - [ ] WebSocket example (demo-3)
   - [ ] Docs
     - [x] Rudimentary README.md
