@@ -13,10 +13,10 @@ export default class Server extends Component {
 		this._clients = [];
 	}
 
-	addClient(socket) {
+	addClient(transport) {
 		this._log(2, "new client");
-		socket.onMessage = (message) => this._onMessage(socket, message);
-		this._clients.push(socket);
+		transport.onMessage = (message) => this._onMessage(transport, message);
+		this._clients.push(transport);
 	}
 
 	getState() {
@@ -33,15 +33,15 @@ export default class Server extends Component {
 		return this;
 	}
 
-	_onMessage(clientSocket, {type, data, t}) {
+	_onMessage(clientTransport, {type, data, t}) {
 		this._log(0, "received message %s", type);
 		switch (type) {
 			case "hai":
-				this._send(clientSocket, {type:"xxx"});
+				this._send(clientTransport, {type:"xxx"});
 			break;
 
 			case "lol":
-				this._send(clientSocket, {type:"wut"});
+				this._send(clientTransport, {type:"wut"});
 			break;
 		}
 	}
@@ -56,9 +56,9 @@ export default class Server extends Component {
 		this._stateQueue.add(newTime, newState);
 	}
 
-	_send(clientSocket, message) {
+	_send(clientTransport, message) {
 		if (!message.t) { message.t = this._now(); }
-		clientSocket.send(message);
+		clientTransport.send(message);
 	}
 
 	_now() {

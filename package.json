@@ -5,8 +5,8 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "demo-1": "cd demo-1 && rollup -c -w",
-    "demo-2": "cd demo-2 && rollup -c -w",
+    "demo-1": "make -C demo-1",
+    "demo-2": "make -C demo-2",
     "demo-3": "make -C demo-3"
   },
   "author": "",

@@ -1,6 +1,6 @@
-import Socket from "./socket.js";
+import Transport from "./transport.js";
 
-export class Client extends Socket {
+export class Client extends Transport {
 	constructor(ws) {
 		super();
 		this._ws = ws;
@@ -21,7 +21,7 @@ export class Client extends Socket {
 	}
 }
 
-export class Server extends Socket {
+export class Server extends Transport {
 	constructor(connection) {
 		super();
 		this._ws = ws;

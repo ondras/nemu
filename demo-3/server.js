@@ -11,12 +11,11 @@ const app = {
 		interpolate: lerp,
 		advance: (oldState, dt) => oldState + dt
 	}
-};
+}
 
 
 
-
-var app$2 = Object.freeze({
+var app$1 = Object.freeze({
 	default: app
 });
 
@@ -162,26 +161,24 @@ const server = {
 	log
 };
 
-
-
-const app$3 = {
+const app$2 = {
 
 };
 
 class Server extends Component {
-	constructor(app$$1 = {}, options = {}) {
+	constructor(app = {}, options = {}) {
 		merge(options, server);
-		merge(app$$1, app$3);
-		super("server", app$$1, options);
+		merge(app, app$2);
+		super("server", app, options);
 
 		this._startTime = 0;
 		this._clients = [];
 	}
 
-	addClient(socket) {
+	addClient(transport) {
 		this._log(2, "new client");
-		socket.onMessage = (message) => this._onMessage(socket, message);
-		this._clients.push(socket);
+		transport.onMessage = (message) => this._onMessage(transport, message);
+		this._clients.push(transport);
 	}
 
 	getState() {
@@ -198,15 +195,15 @@ class Server extends Component {
 		return this;
 	}
 
-	_onMessage(clientSocket, {type, data, t}) {
+	_onMessage(clientTransport, {type, data, t}) {
 		this._log(0, "received message %s", type);
 		switch (type) {
 			case "hai":
-				this._send(clientSocket, {type:"xxx"});
+				this._send(clientTransport, {type:"xxx"});
 			break;
 
 			case "lol":
-				this._send(clientSocket, {type:"wut"});
+				this._send(clientTransport, {type:"wut"});
 			break;
 		}
 	}
@@ -221,9 +218,9 @@ class Server extends Component {
 		this._stateQueue.add(newTime, newState);
 	}
 
-	_send(clientSocket, message) {
+	_send(clientTransport, message) {
 		if (!message.t) { message.t = this._now(); }
-		clientSocket.send(message);
+		clientTransport.send(message);
 	}
 
 	_now() {
@@ -238,12 +235,12 @@ class Server extends Component {
 			type: "fyi",
 			data: state,
 			t: time
-		};
+		}
 		this._clients.forEach(t => this._send(t, message));
 	}
 }
 
-class Socket {
+class Transport {
 	onOpen() {}
 
 	send(message) {}
@@ -253,7 +250,7 @@ class Socket {
 	onClose() {}
 }
 
-class Server$1 extends Socket {
+class Server$1 extends Transport {
 	constructor(connection) {
 		super();
 		this._ws = ws;
@@ -277,7 +274,7 @@ class Server$1 extends Socket {
 const PORT = 8080;
 const WebSocketServer = require("websocket").server;
 
-const gameServer = new Server(app$2).start();
+const gameServer = new Server(app$1).start();
 
 const httpServer = require("http").createServer((request, response) => {
     response.writeHead(404);
@@ -290,8 +287,8 @@ const wsServer = new WebSocketServer({
     autoAcceptConnections: true
 });
 wsServer.on("connect", connection => {
-	let socket = new Server$1(connection);
-	gameServer.addClient(socket);
+	let transport = new Server$1(connection);
+	gameServer.addClient(transport);
 });
 
 }());

@@ -1,7 +1,7 @@
 import { lerp } from "nemu/interpolator/scalar.js";
 import Client from "nemu/client.js";
 import Server from "nemu/server.js";
-import FakeSocket from "nemu/socket/fake.js";
+import FakeTransport from "nemu/transport/fake.js";
 
 const app = {
 	state: {
@@ -26,7 +26,7 @@ const clientOptions = {
 }
 
 let server = new Server(app, serverOptions).start();
-let socket = new FakeSocket(server);
-let client = new Client(socket, app, clientOptions);
+let transport = new FakeTransport(server);
+let client = new Client(transport, app, clientOptions);
 
 setInterval(() => document.body.innerHTML = client.getState(), 50);

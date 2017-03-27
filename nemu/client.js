@@ -4,14 +4,14 @@ import { app as appDefaults, client as clientDefaults } from "./util/defaults.js
 import merge from "./util/merge.js";
 
 export default class Client extends Component {
-	constructor(socket, app = {}, options = {}) {
+	constructor(transport, app = {}, options = {}) {
 		merge(options, clientDefaults);
 		merge(app, appDefaults);
 		super("client", app, options);
 
-		this._socket = socket;
-		this._socket.onOpen = () => this._onOpen();
-		this._socket.onMessage = (message) => this._onMessage(message);
+		this._transport = transport;
+		this._transport.onOpen = () => this._onOpen();
+		this._transport.onMessage = (message) => this._onMessage(message);
 
 		this._serverTimeOffset = null;
 	}
@@ -70,7 +70,7 @@ export default class Client extends Component {
 	}
 
 	_send(message) {
-		this._socket.send(message);
+		this._transport.send(message);
 	}
 
 	_onOpen() {

@@ -1,11 +1,11 @@
 import Client from "nemu/client.js";
-import FakeClientSocket from "nemu/socket/fake.js";
+import FakeTransport from "nemu/transport/fake.js";
 import Renderer from "./renderer.js";
 
 export default class DemoClient {
     constructor(server, app) {
-        this._socket = new FakeClientSocket(server);
-        this._client = new Client(this._socket, app);
+        this._transport = new FakeTransport(server);
+        this._client = new Client(this._transport, app);
 
         this._node = this._build();
 
@@ -64,7 +64,7 @@ export default class DemoClient {
     _setLatency(latency) {
        this._node.querySelector(".latency input").value = latency;
        this._node.querySelector(".latency span").innerHTML = latency;
-       this._socket.setLatency(latency);
+       this._transport.setLatency(latency);
     }
 
     _setDelay(delay) {

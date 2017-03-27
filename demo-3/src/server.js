@@ -1,6 +1,6 @@
 import * as app from "./app.js";
 import GameServer from "nemu/server.js";
-import { Server as Socket } from "nemu/socket/websocket.js";
+import { Server as Transport } from "nemu/transport/websocket.js";
 
 const PORT = 8080;
 const WebSocketServer = require("websocket").server;
@@ -18,6 +18,6 @@ const wsServer = new WebSocketServer({
     autoAcceptConnections: true
 });
 wsServer.on("connect", connection => {
-	let socket = new Socket(connection);
-	gameServer.addClient(socket);
+	let transport = new Transport(connection);
+	gameServer.addClient(transport);
 });

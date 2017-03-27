@@ -1,4 +1,4 @@
-export default class Socket {
+export default class Transport {
 	onOpen() {}
 
 	send(message) {}

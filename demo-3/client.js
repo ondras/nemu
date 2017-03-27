@@ -11,16 +11,15 @@ const app = {
 		interpolate: lerp,
 		advance: (oldState, dt) => oldState + dt
 	}
-};
+}
 
 
 
-
-var app$2 = Object.freeze({
+var app$1 = Object.freeze({
 	default: app
 });
 
-class Socket {
+class Transport {
 	onOpen() {}
 
 	send(message) {}
@@ -30,7 +29,7 @@ class Socket {
 	onClose() {}
 }
 
-class Client extends Socket {
+class Client extends Transport {
 	constructor(ws) {
 		super();
 		this._ws = ws;
@@ -185,26 +184,24 @@ const log = {
 	level: 1
 };
 
-
-
 const client$1 = {
 	delay: 0,
 	log
 };
 
-const app$3 = {
+const app$2 = {
 
 };
 
 class Client$1 extends Component {
-	constructor(socket, app$$1 = {}, options = {}) {
+	constructor(transport, app = {}, options = {}) {
 		merge(options, client$1);
-		merge(app$$1, app$3);
-		super("client", app$$1, options);
+		merge(app, app$2);
+		super("client", app, options);
 
-		this._socket = socket;
-		this._socket.onOpen = () => this._onOpen();
-		this._socket.onMessage = (message) => this._onMessage(message);
+		this._transport = transport;
+		this._transport.onOpen = () => this._onOpen();
+		this._transport.onMessage = (message) => this._onMessage(message);
 
 		this._serverTimeOffset = null;
 	}
@@ -263,7 +260,7 @@ class Client$1 extends Component {
 	}
 
 	_send(message) {
-		this._socket.send(message);
+		this._transport.send(message);
 	}
 
 	_onOpen() {
@@ -273,8 +270,8 @@ class Client$1 extends Component {
 }
 
 let ws$1 = new WebSocket("ws://localhost:8080");
-let socket = new Client(ws$1);
-let client = new Client$1(socket, app$2);
+let transport = new Client(ws$1);
+let client = new Client$1(transport, app$1);
 
 setInterval(() => document.body.innerHTML = client.getState(), 50);
 

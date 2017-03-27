@@ -1,6 +1,6 @@
-import Socket from "./socket.js";
+import Transport from "./transport.js";
 
-class Proxy extends Socket {
+class Proxy extends Transport {
 	send(message) {
 		if (this._latency) {
 			setTimeout(() => {
@@ -25,9 +25,9 @@ class Proxy extends Socket {
 }
 
 class FakeServer extends Proxy {
-	constructor(clientSocket) {
+	constructor(clientTransport) {
 		super();
-		this._other = clientSocket;
+		this._other = clientTransport;
 	}
 }
 
