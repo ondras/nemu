@@ -16,6 +16,7 @@ export default class Server extends Component {
 	addClient(transport) {
 		this._log(2, "new client");
 		transport.onMessage = (message) => this._onMessage(transport, message);
+		transport.onClose = () => this._onClose(transport);
 		this._clients.push(transport);
 	}
 
@@ -43,6 +44,14 @@ export default class Server extends Component {
 			case "lol":
 				this._send(clientTransport, {type:"wut"});
 			break;
+		}
+	}
+
+	_onClose(clientTransport) {
+		let index = this._clients.indexOf(clientTransport);
+		if (index > -1) {
+			this._log(1, "client disconnected");
+			this._clients.splice(index, 1);
 		}
 	}
 

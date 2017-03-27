@@ -17,7 +17,7 @@ The library is a Work-In-Progress.
     - [ ] Misc
       - [ ] Disconnecting
       - [x] Logger
-      - [ ] Socket abstractions
+      - [x] Socket abstractions
       - [x] Interpolators
         - [x] Scalar
         - [x] Array
@@ -25,7 +25,7 @@ The library is a Work-In-Progress.
   - [ ] Demos
     - [x] Smallest example (demo-1)
     - [x] Non-trivial example with adjustable client (demo-2)
-    - [ ] WebSocket example (demo-3)
+    - [x] WebSocket example (demo-3)
   - [ ] Docs
     - [x] Rudimentary README.md
     - [ ] Wiki

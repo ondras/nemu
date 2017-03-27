@@ -1,4 +1,4 @@
-import * as app from "./app.js";
+import app from "./app.js";
 import { Client as Transport } from "nemu/transport/websocket.js";
 import Client from "nemu/client.js";
 

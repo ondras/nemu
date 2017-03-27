@@ -11,13 +11,7 @@ const app = {
 		interpolate: lerp,
 		advance: (oldState, dt) => oldState + dt
 	}
-}
-
-
-
-var app$1 = Object.freeze({
-	default: app
-});
+};
 
 class Logger {
 	constructor(prefix, options) {
@@ -161,15 +155,17 @@ const server = {
 	log
 };
 
+
+
 const app$2 = {
 
 };
 
 class Server extends Component {
-	constructor(app = {}, options = {}) {
+	constructor(app$$1 = {}, options = {}) {
 		merge(options, server);
-		merge(app, app$2);
-		super("server", app, options);
+		merge(app$$1, app$2);
+		super("server", app$$1, options);
 
 		this._startTime = 0;
 		this._clients = [];
@@ -178,6 +174,7 @@ class Server extends Component {
 	addClient(transport) {
 		this._log(2, "new client");
 		transport.onMessage = (message) => this._onMessage(transport, message);
+		transport.onClose = () => this._onClose(transport);
 		this._clients.push(transport);
 	}
 
@@ -208,6 +205,14 @@ class Server extends Component {
 		}
 	}
 
+	_onClose(clientTransport) {
+		let index = this._clients.indexOf(clientTransport);
+		if (index > -1) {
+			this._log(1, "client disconnected");
+			this._clients.splice(index, 1);
+		}
+	}
+
 	_tick() {
 		let oldState = this._stateQueue.getNewestState();
 		let oldTime = this._stateQueue.getNewestTime();
@@ -235,7 +240,7 @@ class Server extends Component {
 			type: "fyi",
 			data: state,
 			t: time
-		}
+		};
 		this._clients.forEach(t => this._send(t, message));
 	}
 }
@@ -253,34 +258,26 @@ class Transport {
 class Server$1 extends Transport {
 	constructor(connection) {
 		super();
-		this._ws = ws;
-		this._ws.addEventListener("message", this);
-		this._ws.addEventListener("close", this);
-		this._ws.addEventListener("open", this);
+		this._connection = connection;
+		connection.on("message", m => this.onMessage(JSON.parse(m.utf8Data)));
+		connection.on("close", e => this.onClose());
 	}
 
-	send(message) { this._ws.send(JSON.stringify(message)); }
-	close() { this._ws.close(); }
-
-	handleEvent(e) {
-		switch (e.type) {
-			case "message": this.onMessage(JSON.parse(e.data)); break;
-			case "close": this.onClose(); break;
-			case "open": this.onOpen(); break;
-		}
-	}
+	send(message) { this._connection.send(JSON.stringify(message)); }
+	close() { this._connection.close(); }
 }
 
 const PORT = 8080;
 const WebSocketServer = require("websocket").server;
 
-const gameServer = new Server(app$1).start();
+const gameServer = new Server(app).start();
 
 const httpServer = require("http").createServer((request, response) => {
     response.writeHead(404);
     response.end();
 });
 httpServer.listen(PORT);
+console.log("HTTP server listening at :%s", PORT);
 
 const wsServer = new WebSocketServer({
     httpServer,

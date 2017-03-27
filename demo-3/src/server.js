@@ -1,4 +1,4 @@
-import * as app from "./app.js";
+import app from "./app.js";
 import GameServer from "nemu/server.js";
 import { Server as Transport } from "nemu/transport/websocket.js";
 
@@ -12,6 +12,7 @@ const httpServer = require("http").createServer((request, response) => {
     response.end();
 });
 httpServer.listen(PORT);
+console.log("HTTP server listening at :%s", PORT);
 
 const wsServer = new WebSocketServer({
     httpServer,

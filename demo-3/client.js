@@ -11,13 +11,7 @@ const app = {
 		interpolate: lerp,
 		advance: (oldState, dt) => oldState + dt
 	}
-}
-
-
-
-var app$1 = Object.freeze({
-	default: app
-});
+};
 
 class Transport {
 	onOpen() {}
@@ -184,6 +178,8 @@ const log = {
 	level: 1
 };
 
+
+
 const client$1 = {
 	delay: 0,
 	log
@@ -194,10 +190,10 @@ const app$2 = {
 };
 
 class Client$1 extends Component {
-	constructor(transport, app = {}, options = {}) {
+	constructor(transport, app$$1 = {}, options = {}) {
 		merge(options, client$1);
-		merge(app, app$2);
-		super("client", app, options);
+		merge(app$$1, app$2);
+		super("client", app$$1, options);
 
 		this._transport = transport;
 		this._transport.onOpen = () => this._onOpen();
@@ -269,9 +265,9 @@ class Client$1 extends Component {
 	}
 }
 
-let ws$1 = new WebSocket("ws://localhost:8080");
-let transport = new Client(ws$1);
-let client = new Client$1(transport, app$1);
+let ws = new WebSocket("ws://localhost:8080");
+let transport = new Client(ws);
+let client = new Client$1(transport, app);
 
 setInterval(() => document.body.innerHTML = client.getState(), 50);
 
